@@ -1,0 +1,158 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="UTF-8">
+
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+
+<script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+
+<script src="https://unpkg.com/babel-standalone@6.15.0/babel.min.js"></script>
+<script src="https://unpkg.com/react@latest/dist/react.js"></script>
+<script src="https://unpkg.com/react-dom@latest/dist/react-dom.js"></script>
+
+<style>
+	#app-container{
+		max-width:500px;
+		margin-left:auto;
+		margin-right:auto;
+		margin-top:5%;
+	}
+</style>
+
+<title>Weather App</title>
+</head>
+
+<body>
+
+	<div id="react-container"></div>
+
+	<script type="text/babel">
+
+		class WeatherWidget extends React.Component {
+			constructor(props){
+				super(props);
+				var theMessage = props.temp || "Enter a zip code to see the temp.";
+				this.state = {message:theMessage, options:{}};
+			}
+
+			getTemp(zip){
+				if(validate(zip)){
+					makePromise(zip).then((data)=>{
+						if(!data.response.error){
+							this.setState({data:data, error:false});
+						} else {
+							this.setState({error:true});
+						}
+					})
+				}
+			}
+
+			changeDisplay(prop, checked){
+				var optionsObj = this.state.options;
+				optionsObj[prop] = checked;
+				this.setState({options:optionsObj});
+			}
+
+			activate(){
+				this.setState({actice:true});
+			}
+
+			render() {
+				var messageString = this.state.error === true ? "Invalid zip code. Please try again." : "Enter a zip code to check weather conditions.";
+				var data = this.state.data;
+				var checkboxes = [];
+				if(data != undefined){
+					this.props.options.forEach((e,i) => {
+						checkboxes.push(<Checkbox labelText={e} key={i} whenChanged={this.changeDisplay.bind(this)}/>);
+					});
+
+					var data = this.state.data;
+					var messageString = "Output: ";
+					if(this.state.options["City"] === true) messageString += "In " + data['location']['city'] + " ";
+					if(this.state.options["Temp"] === true) messageString += "the temperature is " + data['current_observation']['temp_f'] + " degrees F, "
+					if(this.state.options["Humidity"] === true) messageString += "and the humidity is " + data['current_observation']['relative_humidity'] + ".";
+				}
+
+				return (
+					<div className="panel panel-default">
+					 <div className="panel-heading">
+						<h3 className="panel-title">React Demo</h3>
+					  </div>
+					  <div className="panel-body">
+						<div className="input-group">
+						  <span className="input-group-addon" id="basic-addon1">Zipcode</span>
+						  <input type="number" className="form-control" aria-describedby="basic-addon1" id="zip" max="99999"></input>
+						  <div className="input-group-btn">
+							<button type="submit" className="btn btn-default" onClick={() => this.getTemp($('#zip').val())}>Check</button>
+						  </div>
+						</div>
+						<div id="output-holder">{messageString}</div>
+						<div id="checkbox-holder">{checkboxes}</div>
+					  </div>
+					</div>
+				)
+			}
+		}
+
+		class Checkbox extends React.Component {
+			constructor(props){
+				super(props);
+				var isChecked = props.isChecked || false;
+				var theLabel = props.labelText || "?";
+				this.state = {checked:isChecked, labelText:theLabel, whenChanged:props.whenChanged};
+			}
+
+			onChange(){
+				this.setState({checked:!this.state.checked});
+				this.state.whenChanged(this.state.labelText, !this.state.checked);
+			}
+
+			render(){
+				return(
+					<div className="checkbox">
+						<label><input type="checkbox" onChange={()=>this.onChange()} checked={this.state.checked}></input>{this.state.labelText}</label>
+					</div>
+				);
+			}
+		}
+
+		var widgetOptions = ["City", "Temp", "Humidity"];
+
+		ReactDOM.render(
+		  <WeatherWidget options={widgetOptions} />,
+		  document.getElementById('react-container')
+		);
+
+		const apiKey = "9a1bdd604050f18b";
+		function makePromise(zip){
+			return new Promise((resolve,reject)=> {
+				$.ajax({
+				  url : "http://api.wunderground.com/api/" + apiKey + "/conditions/geolookup/q/" + zip + ".json",
+				  dataType : "jsonp",
+				  success : function(parsed_json){
+					  resolve(parsed_json);
+				  },
+				  error : function(error){
+					  reject(error);
+				  }
+				});
+			});
+		}
+		function validate(zip){
+			if(!isNaN(zip) && String(zip).length == 5){
+				$("#zip").removeClass("alert-danger");
+				return true;
+			} else {
+				$("#zip").addClass("alert-danger");
+				return false;
+			}
+		}
+	</script>
+
+</body>
+</html>
